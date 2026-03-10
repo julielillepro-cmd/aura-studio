@@ -154,6 +154,12 @@ select option{background:#fff;}
 @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 .fade-in{animation:fadeIn 0.25s ease forwards}
 button:hover{opacity:0.82;}
+@media(max-width:600px){
+  .grid-2{grid-template-columns:1fr!important;}
+  .grid-4{grid-template-columns:1fr 1fr!important;}
+  .hide-mobile{display:none!important;}
+  .mobile-full{width:100%!important;max-width:100%!important;}
+}
 `;
 
 // ─── STYLE TOKENS ────────────────────────────────────────────────────────────
@@ -774,27 +780,75 @@ function CalendarTab({calendar,setCalendar,workouts,setWorkouts,exercises,races}
         </div>
       )}
 
-      {/* EDIT MODAL */}
-      {editModal && (
-        <div style={{position:"fixed",inset:0,background:"rgba(58,40,48,0.5)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:100}}>
-          <div style={{...S.card,width:420,border:`2px solid ${C.mauve}`}}>
-            <div style={{fontFamily:"'Playfair Display',serif",fontSize:18,fontWeight:700,marginBottom:16,color:C.text}}>Modifier la séance</div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
-              <div><span style={S.label}>Nom</span><input style={S.input} value={editForm.name} onChange={e=>setEditForm({...editForm,name:e.target.value})}/></div>
-              <div><span style={S.label}>Label</span><input style={S.input} value={editForm.label} onChange={e=>setEditForm({...editForm,label:e.target.value})}/></div>
-              <div><span style={S.label}>Distance km</span><input style={S.input} type="number" value={editForm.distance} onChange={e=>setEditForm({...editForm,distance:e.target.value})}/></div>
-              <div><span style={S.label}>Durée min</span><input style={S.input} type="number" value={editForm.duration} onChange={e=>setEditForm({...editForm,duration:e.target.value})}/></div>
-              <div><span style={S.label}>D+</span><input style={S.input} type="number" value={editForm.elevation} onChange={e=>setEditForm({...editForm,elevation:e.target.value})}/></div>
-              <div><span style={S.label}>Allure</span><input style={S.input} value={editForm.pace} onChange={e=>setEditForm({...editForm,pace:e.target.value})}/></div>
+      {/* EDIT MODAL – type-aware */}
+      {editModal && (()=>{
+        const ew=workouts.find(w=>w.id===editModal);
+        if(!ew) return null;
+        const run=isRun(ew.type);
+        const strength=["strength","crossfit"].includes(ew.type);
+        return (
+          <div style={{position:"fixed",top:0,left:0,width:"100%",height:"100%",background:"rgba(58,40,48,0.5)",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+            <div style={{...S.card,width:"100%",maxWidth:480,maxHeight:"90vh",overflowY:"auto",border:`2px solid ${C.mauve}`}}>
+              <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
+                <span style={{fontSize:22}}>{TYPE_EMOJI[ew.type]}</span>
+                <div>
+                  <div style={{fontFamily:"'Playfair Display',serif",fontSize:18,fontWeight:700,color:C.text}}>Modifier la séance</div>
+                  <div style={{fontFamily:"'DM Mono',monospace",fontSize:10,color:TYPE_COLOR[ew.type]||C.bordeaux,textTransform:"uppercase"}}>{TYPE_LABEL[ew.type]}</div>
+                </div>
+              </div>
+
+              {/* Name + label always */}
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
+                <div><span style={S.label}>Nom</span><input style={S.input} value={editForm.name} onChange={e=>setEditForm({...editForm,name:e.target.value})}/></div>
+                <div><span style={S.label}>Label</span><input style={S.input} value={editForm.label} onChange={e=>setEditForm({...editForm,label:e.target.value})} placeholder="Lower / Upper…"/></div>
+              </div>
+
+              {/* Run fields */}
+              {run && (
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
+                  <div><span style={S.label}>Distance km</span><input style={S.input} type="number" value={editForm.distance} onChange={e=>setEditForm({...editForm,distance:e.target.value})}/></div>
+                  <div><span style={S.label}>Durée min</span><input style={S.input} type="number" value={editForm.duration} onChange={e=>setEditForm({...editForm,duration:e.target.value})}/></div>
+                  {ew.type==="trail" && <div><span style={S.label}>D+ (m)</span><input style={S.input} type="number" value={editForm.elevation} onChange={e=>setEditForm({...editForm,elevation:e.target.value})}/></div>}
+                  <div><span style={S.label}>Allure min/km</span><input style={S.input} placeholder="ex: 5:30" value={editForm.pace} onChange={e=>setEditForm({...editForm,pace:e.target.value})}/></div>
+                </div>
+              )}
+
+              {/* Strength: show exercises */}
+              {strength && (
+                <div style={{marginBottom:12}}>
+                  <span style={S.label}>Exercices ({ew.exercises?.length||0})</span>
+                  {(ew.exercises||[]).length===0 ? (
+                    <div style={{color:C.textLight,fontSize:13,padding:"8px 0"}}>Aucun exercice — ajoute-en via l'onglet Séances</div>
+                  ) : (
+                    <div style={{display:"flex",flexDirection:"column",gap:6,maxHeight:160,overflowY:"auto"}}>
+                      {(ew.exercises||[]).map((se,i)=>{
+                        const ex=exercises.find(e=>e.id===se.exId);
+                        return (
+                          <div key={i} style={{background:C.creamDark,borderRadius:8,padding:"8px 12px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                            <span style={{fontSize:13,fontWeight:600,color:C.text}}>{ex?.name||"Exercice"}</span>
+                            <span style={{fontFamily:"'DM Mono',monospace",fontSize:10,color:C.textLight}}>{se.sets.length} séries</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Notes always */}
+              <div style={{marginBottom:16}}>
+                <span style={S.label}>Ressenti / Notes</span>
+                <textarea style={{...S.input,resize:"vertical",minHeight:70}} value={editForm.description} onChange={e=>setEditForm({...editForm,description:e.target.value})} placeholder="RPE, énergie, sensations..."/>
+              </div>
+
+              <div style={{display:"flex",gap:8}}>
+                <button style={S.btn("primary")} onClick={saveEdit}>Sauvegarder</button>
+                <button style={S.btn()} onClick={()=>setEditModal(null)}>Annuler</button>
+              </div>
             </div>
-            <div style={{marginBottom:16}}>
-              <span style={S.label}>Ressenti / Notes</span>
-              <textarea style={{...S.input,resize:"vertical",minHeight:70}} value={editForm.description} onChange={e=>setEditForm({...editForm,description:e.target.value})}/>
-            </div>
-            <div style={{display:"flex",gap:8}}><button style={S.btn("primary")} onClick={saveEdit}>Sauvegarder</button><button style={S.btn()} onClick={()=>setEditModal(null)}>Annuler</button></div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* DETAIL MODAL */}
       {detailModal && (detailW||detailRace) && (
@@ -942,7 +996,7 @@ function Dashboard({workouts,exercises,races}) {
       <div style={S.h1}>Dashboard</div>
 
       {/* KPIs */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(130px,1fr))",gap:12,marginBottom:20}}>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(120px,1fr))",gap:12,marginBottom:20}}>
         {[["Séances",recent.length,""],["Km courus",totalKm.toFixed(1),"km"],["D+",totalD,"m"],["Prochain",nextRace?daysUntil(nextRace.date)+"j":"—",""]].map(([l,v,u])=>(
           <div key={l} style={S.card}>
             <span style={S.label}>{l}</span>
@@ -974,8 +1028,7 @@ function Dashboard({workouts,exercises,races}) {
         </div>
       )}
 
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}}>
-        {/* Volume bars */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:16,marginBottom:16}}>
         <div style={S.card}>
           <div style={S.h2}>Volume muscu – 4 semaines</div>
           <div style={{display:"flex",alignItems:"flex-end",gap:10,height:80,marginTop:12}}>
@@ -995,7 +1048,7 @@ function Dashboard({workouts,exercises,races}) {
         </div>
       </div>
 
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}}>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:16,marginBottom:16}}>
         {/* Muscle analysis */}
         <div style={S.card}>
           <div style={S.h2}>Analyse musculaire</div>
@@ -1042,7 +1095,7 @@ function Dashboard({workouts,exercises,races}) {
       {/* Running PRs – bottom */}
       <div style={S.card}>
         <div style={S.h2}>🏃 Records course à pieds</div>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginTop:8}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(100px,1fr))",gap:10,marginTop:8}}>
           {[["5","5 km"],["10","10 km"],["21.1","Semi"],["42.2","Marathon"]].map(([dist,label])=>{
             const pr=runPRMap[Number(dist)];
             return (
@@ -1072,6 +1125,15 @@ const USERS = [
   {id:"guest",  name:"Invitée", emoji:"✨"},
 ];
 
+const TABS=[
+  {id:"dashboard", label:"Dashboard", emoji:"📊"},
+  {id:"workouts",  label:"Séances",   emoji:"🏋️"},
+  {id:"calendar",  label:"Calendrier",emoji:"📅"},
+  {id:"exercises", label:"Exercices", emoji:"💪"},
+  {id:"rm",        label:"RM",        emoji:"🎯"},
+  {id:"races",     label:"Courses",   emoji:"🏁"},
+];
+
 function UserSpace({userId,onSwitch}) {
   const user=USERS.find(u=>u.id===userId);
   const [exercises,setExercises]=useState(BASE_EXERCISES);
@@ -1083,34 +1145,45 @@ function UserSpace({userId,onSwitch}) {
   const [races,setRaces]=useState(INITIAL_RACES);
   const [tab,setTab]=useState("dashboard");
   const [showMenu,setShowMenu]=useState(false);
+  const [showUserMenu,setShowUserMenu]=useState(false);
 
-  const TABS=[
-    {id:"dashboard",label:"Dashboard"},{id:"workouts",label:"Séances"},
-    {id:"exercises",label:"Exercices"},{id:"rm",label:"Simulateur RM"},
-    {id:"calendar",label:"Calendrier"},{id:"races",label:"Courses"},
-  ];
+  // Detect mobile
+  const isMobile = typeof window !== "undefined" && window.innerWidth <= 600;
 
   return (
-    <div style={{fontFamily:"'DM Sans',sans-serif",background:C.cream,minHeight:"100vh"}}>
+    <div style={{fontFamily:"'DM Sans',sans-serif",background:C.cream,minHeight:"100vh",paddingBottom:isMobile?70:0}}>
       <style>{css}</style>
-      <header style={{background:C.white,borderBottom:`1px solid ${C.mauveLight}`,padding:"0 20px",height:56,display:"flex",alignItems:"center",gap:16,boxShadow:"0 2px 12px rgba(58,40,48,0.06)",position:"sticky",top:0,zIndex:50}}>
+
+      {/* ── HEADER ── */}
+      <header style={{background:C.white,borderBottom:`1px solid ${C.mauveLight}`,padding:"0 16px",height:52,display:"flex",alignItems:"center",gap:12,boxShadow:"0 2px 12px rgba(58,40,48,0.06)",position:"sticky",top:0,zIndex:50}}>
         {/* Logo */}
-        <div style={{display:"flex",alignItems:"baseline",gap:8,flexShrink:0}}>
-          <span style={{fontFamily:"'Playfair Display',serif",fontSize:20,fontWeight:700,color:C.bordeaux}}>AURA</span>
-          <span style={{fontFamily:"'DM Mono',monospace",fontSize:9,letterSpacing:2,color:C.textLight}}>STUDIO</span>
+        <div style={{display:"flex",alignItems:"baseline",gap:6,flexShrink:0}}>
+          <span style={{fontFamily:"'Playfair Display',serif",fontSize:18,fontWeight:700,color:C.bordeaux}}>AURA</span>
+          <span style={{fontFamily:"'DM Mono',monospace",fontSize:8,letterSpacing:2,color:C.textLight}} className="hide-mobile">STUDIO</span>
         </div>
         <div style={{width:1,height:18,background:C.mauveLight,flexShrink:0}}/>
+
+        {/* Desktop nav */}
+        <nav style={{display:"flex",gap:2,flex:1,overflowX:"auto"}} className="hide-mobile">
+          {TABS.map(t=><button key={t.id} style={S.navBtn(tab===t.id)} onClick={()=>setTab(t.id)}>{t.label}</button>)}
+        </nav>
+
+        {/* Mobile: current tab title */}
+        <div style={{flex:1,fontFamily:"'Playfair Display',serif",fontSize:16,fontWeight:600,color:C.text}} className="show-mobile-only">
+          {TABS.find(t=>t.id===tab)?.label}
+        </div>
+
         {/* User switcher */}
         <div style={{position:"relative",flexShrink:0}}>
-          <button onClick={()=>setShowMenu(p=>!p)} style={{display:"flex",alignItems:"center",gap:8,background:C.creamDark,border:"none",borderRadius:20,padding:"6px 14px",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:13,fontWeight:600,color:C.text}}>
+          <button onClick={()=>setShowUserMenu(p=>!p)} style={{display:"flex",alignItems:"center",gap:6,background:C.creamDark,border:"none",borderRadius:20,padding:"6px 12px",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:13,fontWeight:600,color:C.text}}>
             <span>{user.emoji}</span>
-            <span>{user.name}</span>
+            <span className="hide-mobile">{user.name}</span>
             <span style={{fontSize:10,color:C.textLight}}>▼</span>
           </button>
-          {showMenu && (
-            <div style={{position:"absolute",top:"110%",left:0,background:C.white,borderRadius:12,boxShadow:"0 8px 24px rgba(58,40,48,0.15)",border:`1px solid ${C.mauveLight}`,overflow:"hidden",minWidth:150,zIndex:200}}>
+          {showUserMenu && (
+            <div style={{position:"absolute",top:"110%",right:0,background:C.white,borderRadius:12,boxShadow:"0 8px 24px rgba(58,40,48,0.15)",border:`1px solid ${C.mauveLight}`,overflow:"hidden",minWidth:150,zIndex:200}}>
               {USERS.map(u=>(
-                <button key={u.id} onClick={()=>{onSwitch(u.id);setShowMenu(false);}} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"12px 16px",background:u.id===userId?C.creamDark:C.white,border:"none",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:13,fontWeight:u.id===userId?600:400,color:C.text,textAlign:"left"}}>
+                <button key={u.id} onClick={()=>{onSwitch(u.id);setShowUserMenu(false);}} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"12px 16px",background:u.id===userId?C.creamDark:C.white,border:"none",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:13,fontWeight:u.id===userId?600:400,color:C.text,textAlign:"left"}}>
                   <span>{u.emoji}</span><span>{u.name}</span>
                   {u.id===userId&&<span style={{marginLeft:"auto",color:C.bordeaux}}>✓</span>}
                 </button>
@@ -1118,13 +1191,10 @@ function UserSpace({userId,onSwitch}) {
             </div>
           )}
         </div>
-        {/* Nav */}
-        <nav style={{display:"flex",gap:4,flex:1,overflowX:"auto"}}>
-          {TABS.map(t=><button key={t.id} style={S.navBtn(tab===t.id)} onClick={()=>{setTab(t.id);setShowMenu(false);}}>{t.label}</button>)}
-        </nav>
       </header>
 
-      <main style={{padding:"28px 24px",maxWidth:1100,margin:"0 auto"}}>
+      {/* ── MAIN CONTENT ── */}
+      <main style={{padding:"20px 16px",maxWidth:1100,margin:"0 auto"}}>
         {tab==="dashboard"  && <Dashboard    workouts={workouts} exercises={exercises} races={races}/>}
         {tab==="workouts"   && <WorkoutsTab  workouts={workouts} setWorkouts={setWorkouts} exercises={exercises} calendar={calendar} setCalendar={setCalendar}/>}
         {tab==="exercises"  && <ExercisesTab exercises={exercises} setExercises={setExercises}/>}
@@ -1132,6 +1202,18 @@ function UserSpace({userId,onSwitch}) {
         {tab==="calendar"   && <CalendarTab  calendar={calendar} setCalendar={setCalendar} workouts={workouts} setWorkouts={setWorkouts} exercises={exercises} races={races}/>}
         {tab==="races"      && <RacesTab     races={races} setRaces={setRaces}/>}
       </main>
+
+      {/* ── MOBILE BOTTOM NAV ── */}
+      <nav style={{display:"none",position:"fixed",bottom:0,left:0,right:0,background:C.white,borderTop:`1px solid ${C.mauveLight}`,zIndex:50,paddingBottom:"env(safe-area-inset-bottom)"}} className="mobile-bottom-nav">
+        <style>{`.mobile-bottom-nav{display:flex!important;}@media(min-width:601px){.mobile-bottom-nav{display:none!important;}}`}</style>
+        {TABS.map(t=>(
+          <button key={t.id} onClick={()=>setTab(t.id)} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"8px 2px",background:"none",border:"none",cursor:"pointer",gap:2}}>
+            <span style={{fontSize:18}}>{t.emoji}</span>
+            <span style={{fontFamily:"'DM Mono',monospace",fontSize:8,letterSpacing:0.5,color:tab===t.id?C.bordeaux:C.textLight,fontWeight:tab===t.id?700:400}}>{t.label}</span>
+            {tab===t.id && <div style={{width:16,height:2,background:C.bordeaux,borderRadius:1}}/>}
+          </button>
+        ))}
+      </nav>
     </div>
   );
 }
@@ -1145,10 +1227,10 @@ export default function App() {
         <div style={{fontFamily:"'Playfair Display',serif",fontSize:56,fontWeight:700,color:C.bordeaux,lineHeight:1}}>AURA</div>
         <div style={{fontFamily:"'DM Mono',monospace",fontSize:12,letterSpacing:4,color:C.textLight,marginTop:6}}>LADIES ONLY STUDIO</div>
       </div>
-      <div style={{display:"flex",gap:20}}>
+      <div style={{display:"flex",gap:16,flexWrap:"wrap",justifyContent:"center"}}>
         {USERS.map(u=>(
           <button key={u.id} onClick={()=>setUserId(u.id)}
-            style={{background:C.white,border:`2px solid ${C.mauveLight}`,borderRadius:20,padding:"32px 44px",cursor:"pointer",textAlign:"center",boxShadow:"0 4px 24px rgba(58,40,48,0.08)",transition:"all 0.2s"}}
+            style={{background:C.white,border:`2px solid ${C.mauveLight}`,borderRadius:20,padding:"28px 36px",cursor:"pointer",textAlign:"center",boxShadow:"0 4px 24px rgba(58,40,48,0.08)",transition:"all 0.2s",minWidth:140}}
             onMouseEnter={e=>{e.currentTarget.style.borderColor=C.bordeaux;e.currentTarget.style.transform="translateY(-4px)";}}
             onMouseLeave={e=>{e.currentTarget.style.borderColor=C.mauveLight;e.currentTarget.style.transform="none";}}
           >
