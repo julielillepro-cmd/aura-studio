@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const fontLink = document.createElement("link");
 fontLink.rel = "stylesheet";
@@ -1134,8 +1134,7 @@ const TABS=[
   {id:"races",     label:"Courses",   emoji:"🏁"},
 ];
 
-function UserSpace({userId,onSwitch}) {
-  const user=USERS.find(u=>u.id===userId);
+function UserSpace() {
   const [exercises,setExercises]=useState(BASE_EXERCISES);
   const [workouts,setWorkouts]=useState(makeWorkouts());
   const [calendar,setCalendar]=useState([
@@ -1144,57 +1143,43 @@ function UserSpace({userId,onSwitch}) {
   ]);
   const [races,setRaces]=useState(INITIAL_RACES);
   const [tab,setTab]=useState("dashboard");
-  const [showMenu,setShowMenu]=useState(false);
-  const [showUserMenu,setShowUserMenu]=useState(false);
+  const [isMobile,setIsMobile]=useState(window.innerWidth<=640);
 
-  // Detect mobile
-  const isMobile = typeof window !== "undefined" && window.innerWidth <= 600;
+  useEffect(()=>{
+    const handle=()=>setIsMobile(window.innerWidth<=640);
+    window.addEventListener("resize",handle);
+    return()=>window.removeEventListener("resize",handle);
+  },[]);
 
   return (
-    <div style={{fontFamily:"'DM Sans',sans-serif",background:C.cream,minHeight:"100vh",paddingBottom:isMobile?70:0}}>
+    <div style={{fontFamily:"'DM Sans',sans-serif",background:C.cream,minHeight:"100vh",paddingBottom:isMobile?72:0}}>
       <style>{css}</style>
 
       {/* ── HEADER ── */}
       <header style={{background:C.white,borderBottom:`1px solid ${C.mauveLight}`,padding:"0 16px",height:52,display:"flex",alignItems:"center",gap:12,boxShadow:"0 2px 12px rgba(58,40,48,0.06)",position:"sticky",top:0,zIndex:50}}>
-        {/* Logo */}
         <div style={{display:"flex",alignItems:"baseline",gap:6,flexShrink:0}}>
           <span style={{fontFamily:"'Playfair Display',serif",fontSize:18,fontWeight:700,color:C.bordeaux}}>AURA</span>
-          <span style={{fontFamily:"'DM Mono',monospace",fontSize:8,letterSpacing:2,color:C.textLight}} className="hide-mobile">STUDIO</span>
+          <span style={{fontFamily:"'DM Mono',monospace",fontSize:8,letterSpacing:2,color:C.textLight}}>STUDIO</span>
         </div>
         <div style={{width:1,height:18,background:C.mauveLight,flexShrink:0}}/>
 
         {/* Desktop nav */}
-        <nav style={{display:"flex",gap:2,flex:1,overflowX:"auto"}} className="hide-mobile">
-          {TABS.map(t=><button key={t.id} style={S.navBtn(tab===t.id)} onClick={()=>setTab(t.id)}>{t.label}</button>)}
-        </nav>
+        {!isMobile && (
+          <nav style={{display:"flex",gap:2,flex:1}}>
+            {TABS.map(t=><button key={t.id} style={S.navBtn(tab===t.id)} onClick={()=>setTab(t.id)}>{t.label}</button>)}
+          </nav>
+        )}
 
         {/* Mobile: current tab title */}
-        <div style={{flex:1,fontFamily:"'Playfair Display',serif",fontSize:16,fontWeight:600,color:C.text}} className="show-mobile-only">
-          {TABS.find(t=>t.id===tab)?.label}
-        </div>
-
-        {/* User switcher */}
-        <div style={{position:"relative",flexShrink:0}}>
-          <button onClick={()=>setShowUserMenu(p=>!p)} style={{display:"flex",alignItems:"center",gap:6,background:C.creamDark,border:"none",borderRadius:20,padding:"6px 12px",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:13,fontWeight:600,color:C.text}}>
-            <span>{user.emoji}</span>
-            <span className="hide-mobile">{user.name}</span>
-            <span style={{fontSize:10,color:C.textLight}}>▼</span>
-          </button>
-          {showUserMenu && (
-            <div style={{position:"absolute",top:"110%",right:0,background:C.white,borderRadius:12,boxShadow:"0 8px 24px rgba(58,40,48,0.15)",border:`1px solid ${C.mauveLight}`,overflow:"hidden",minWidth:150,zIndex:200}}>
-              {USERS.map(u=>(
-                <button key={u.id} onClick={()=>{onSwitch(u.id);setShowUserMenu(false);}} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"12px 16px",background:u.id===userId?C.creamDark:C.white,border:"none",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:13,fontWeight:u.id===userId?600:400,color:C.text,textAlign:"left"}}>
-                  <span>{u.emoji}</span><span>{u.name}</span>
-                  {u.id===userId&&<span style={{marginLeft:"auto",color:C.bordeaux}}>✓</span>}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+        {isMobile && (
+          <div style={{flex:1,fontFamily:"'Playfair Display',serif",fontSize:17,fontWeight:600,color:C.text}}>
+            {TABS.find(t=>t.id===tab)?.label}
+          </div>
+        )}
       </header>
 
       {/* ── MAIN CONTENT ── */}
-      <main style={{padding:"20px 16px",maxWidth:1100,margin:"0 auto"}}>
+      <main style={{padding:isMobile?"16px 12px":"20px 24px",maxWidth:1100,margin:"0 auto"}}>
         {tab==="dashboard"  && <Dashboard    workouts={workouts} exercises={exercises} races={races}/>}
         {tab==="workouts"   && <WorkoutsTab  workouts={workouts} setWorkouts={setWorkouts} exercises={exercises} calendar={calendar} setCalendar={setCalendar}/>}
         {tab==="exercises"  && <ExercisesTab exercises={exercises} setExercises={setExercises}/>}
@@ -1204,43 +1189,21 @@ function UserSpace({userId,onSwitch}) {
       </main>
 
       {/* ── MOBILE BOTTOM NAV ── */}
-      <nav style={{display:"none",position:"fixed",bottom:0,left:0,right:0,background:C.white,borderTop:`1px solid ${C.mauveLight}`,zIndex:50,paddingBottom:"env(safe-area-inset-bottom)"}} className="mobile-bottom-nav">
-        <style>{`.mobile-bottom-nav{display:flex!important;}@media(min-width:601px){.mobile-bottom-nav{display:none!important;}}`}</style>
-        {TABS.map(t=>(
-          <button key={t.id} onClick={()=>setTab(t.id)} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"8px 2px",background:"none",border:"none",cursor:"pointer",gap:2}}>
-            <span style={{fontSize:18}}>{t.emoji}</span>
-            <span style={{fontFamily:"'DM Mono',monospace",fontSize:8,letterSpacing:0.5,color:tab===t.id?C.bordeaux:C.textLight,fontWeight:tab===t.id?700:400}}>{t.label}</span>
-            {tab===t.id && <div style={{width:16,height:2,background:C.bordeaux,borderRadius:1}}/>}
-          </button>
-        ))}
-      </nav>
+      {isMobile && (
+        <nav style={{position:"fixed",bottom:0,left:0,right:0,background:C.white,borderTop:`1px solid ${C.mauveLight}`,zIndex:50,display:"flex",paddingBottom:"env(safe-area-inset-bottom,8px)"}}>
+          {TABS.map(t=>(
+            <button key={t.id} onClick={()=>setTab(t.id)} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"6px 2px 4px",background:"none",border:"none",cursor:"pointer",gap:1,minWidth:0}}>
+              <span style={{fontSize:20}}>{t.emoji}</span>
+              <span style={{fontFamily:"'DM Mono',monospace",fontSize:7,letterSpacing:0.3,color:tab===t.id?C.bordeaux:C.textLight,fontWeight:tab===t.id?700:400,whiteSpace:"nowrap"}}>{t.label}</span>
+              {tab===t.id && <div style={{width:14,height:2,background:C.bordeaux,borderRadius:1,marginTop:1}}/>}
+            </button>
+          ))}
+        </nav>
+      )}
     </div>
   );
 }
 
 export default function App() {
-  const [userId,setUserId]=useState(null);
-  if(!userId) return (
-    <div style={{fontFamily:"'DM Sans',sans-serif",background:C.cream,minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
-      <style>{css}</style>
-      <div style={{textAlign:"center",marginBottom:48}}>
-        <div style={{fontFamily:"'Playfair Display',serif",fontSize:56,fontWeight:700,color:C.bordeaux,lineHeight:1}}>AURA</div>
-        <div style={{fontFamily:"'DM Mono',monospace",fontSize:12,letterSpacing:4,color:C.textLight,marginTop:6}}>LADIES ONLY STUDIO</div>
-      </div>
-      <div style={{display:"flex",gap:16,flexWrap:"wrap",justifyContent:"center"}}>
-        {USERS.map(u=>(
-          <button key={u.id} onClick={()=>setUserId(u.id)}
-            style={{background:C.white,border:`2px solid ${C.mauveLight}`,borderRadius:20,padding:"28px 36px",cursor:"pointer",textAlign:"center",boxShadow:"0 4px 24px rgba(58,40,48,0.08)",transition:"all 0.2s",minWidth:140}}
-            onMouseEnter={e=>{e.currentTarget.style.borderColor=C.bordeaux;e.currentTarget.style.transform="translateY(-4px)";}}
-            onMouseLeave={e=>{e.currentTarget.style.borderColor=C.mauveLight;e.currentTarget.style.transform="none";}}
-          >
-            <div style={{fontSize:44,marginBottom:12}}>{u.emoji}</div>
-            <div style={{fontFamily:"'Playfair Display',serif",fontSize:22,fontWeight:700,color:C.text,marginBottom:4}}>{u.name}</div>
-            <div style={{fontFamily:"'DM Mono',monospace",fontSize:10,letterSpacing:1,color:C.textLight}}>Mon espace</div>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-  return <UserSpace userId={userId} onSwitch={setUserId}/>;
+  return <UserSpace/>;
 }
